@@ -1,0 +1,16 @@
+#!/bin/sh
+# Install all dependency of the project.
+
+cd `dirname $0`'/..'
+
+if [ "$1" == '--dev' ]; then
+	echo "---- Install develop dependency ----"
+	pip3 install -e .[dev]
+	npm install
+else
+	echo "---- Install deploy dependency ----"
+	pip3 install -e .
+	npm install
+fi
+
+echo "---- Done ----"

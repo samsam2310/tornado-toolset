@@ -1,0 +1,68 @@
+#!/bin/sh
+# Use yapf to format Python code.
+# |tool/format| to format all the file diff with origin/master
+# |tool/format remote| to format with other remote.
+# |tool/format remote --check| to check if the code need format.
+
+if [ "$1" = "" ]; then
+	remote='origin'
+else
+	remote="$1"
+fi
+remote_branch="${remote}/master"
+
+if [ "$2" = "--check" ]; then
+	is_check_mode="yes"
+fi
+
+function logMessage {
+	if [ "$is_check_mode" == "" ]; then
+		echo "$1"
+	fi
+}
+
+logMessage "Format file diff with ${remote_branch}"
+
+function checkCmd {
+	"$1" -v > /dev/null
+	if [ $? -ne 0 ]; then
+		logMessage "Please run tool/install-dependency."
+		exit 1
+	fi
+}
+
+prettier_cmd='./node_modules/.bin/prettier'
+checkCmd $prettier_cmd
+yapf_cmd='yapf'
+checkCmd $yapf_cmd
+
+if [ "$is_check_mode" != "" ]; then
+	prettier_arg=' -l'
+	yapf_arg=' --diff'
+else
+	prettier_arg=' --write'
+	yapf_arg=' -i'
+fi
+
+changed_files=`git diff ${remote_branch} --name-only`
+js_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.jsx?$`
+if [ $? -eq 0 ]; then
+	js_files=`echo "$js_files" | tr '\n' ' '`
+	$prettier_cmd $prettier_arg $js_files > /dev/null
+	prettier_res="$?"
+	if [ "$is_check_mode" != "" ] && [ "$prettier_res" -ne 0 ]; then
+		exit 1
+	fi
+fi
+
+python_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.py$`
+if [ $? -eq 0 ]; then
+	python_files=`echo "$python_files" | tr '\n' ' '`
+	$yapf_cmd $python_files $yapf_arg > /dev/null
+	yapf_res="$?"
+	if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
+		exit 1
+	fi
+fi
+
+exit 0

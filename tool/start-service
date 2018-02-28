@@ -1,0 +1,58 @@
+#!/bin/sh
+
+cd `dirname $0`'/..'
+
+current_pid=$$
+
+webpack_cmd="./node_modules/.bin/webpack"
+server_cmd="python -m backend.app"
+
+killSubproc() {
+	test $server_pid -ne 0 && kill -TERM $server_pid
+	kill -INT $webpack_pid
+	exit 1
+}
+
+# $1 = cmd, $2 = cur_pid
+runServer() {
+	$server_cmd &
+	server_pid=$!
+	sleep 1.5
+	if [ -z "`ps $server_pid | sed 1d`" ]; then
+		server_pid=0;
+	fi
+}
+
+echoMD5() {
+	echo `ls -lR . | grep -E \.py$ | md5sum`
+}
+
+monitorModify() {
+	new_MD5=`echoMD5`
+	if [ "$old_MD5" != "$new_MD5" ]; then
+		echo ""
+		echo "-------------- reload ${server_pid} --------------"
+		echo ""
+		test $server_pid -ne 0  && kill -TERM $server_pid
+		runServer
+		old_MD5=`echoMD5`
+	fi
+}
+
+if [ "$1" == "--dev" ]; then
+	DEBUG_MODE=True
+	trap 'killSubproc' INT
+	trap 'server_pid=0' USR1
+	$webpack_cmd --progress --colors --watch &
+	webpack_pid=$!
+	runServer
+	old_MD5=`echoMD5`
+	while [ 1 ]; do
+		sleep 1
+		monitorModify
+	done
+else
+	DEBUG_MODE=False
+	$webpack_cmd
+	$server_cmd
+fi
