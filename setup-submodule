@@ -22,16 +22,11 @@ installTool() {
     ln -s -f `dirname $0`/tool ./tool
 }
 
-installTornadoToolset() {
-    pip3 install -e .
-}
-
 
 read -p "Setup tornado project at $(pwd) ?[y/N]" yn
 if [ $yn == 'y' ] || [ $yn == 'Y' ]; then
     installHooks || exit 1
     installTool || exit 1
-    installTornadoToolset || exit 1
     echo "success."
 else
     echo "quit."
