@@ -23,10 +23,25 @@ installTool() {
 }
 
 
+installFolder() {
+    mkdir -p frontend
+    mkdir -p backend
+    mkdir -p backend/db
+    mkdir -p backend/handler
+    mkdir -p backend/template
+    mkdir -p backend/test
+    touch backend/db/__init__.py
+    touch backend/handler/__init__.py
+    touch requirement.txt
+    touch dev-requirement.txt
+}
+
+
 read -p "Setup tornado project at $(pwd) ?[y/N]" yn
 if [ $yn == 'y' ] || [ $yn == 'Y' ]; then
     installHooks || exit 1
     installTool || exit 1
+    installFolder || exit 1
     echo "success."
 else
     echo "quit."
