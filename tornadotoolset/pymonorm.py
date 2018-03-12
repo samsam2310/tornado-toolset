@@ -3,6 +3,7 @@
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
+import logging
 import os
 
 DB_HOST = os.environ.get('DB_HOST', 'localhost:27017').split(",")
@@ -14,18 +15,17 @@ DB_NAME = os.environ.get('DB_NAME', 'mealtime')
 DB_TIMEOUT = 2
 
 
-def getDatabaseFromEnv(is_log_mode=False):
-    if is_log_mode:
-        print("Connect to DB: %s/%s" % (','.join(DB_HOST), DB_NAME))
-        if DB_REPLSET:
-            print("Replica Set: %s" % DB_REPLSET)
-        if DB_USER:
-            print("Login with user: %s" % DB_USER)
-        else:
-            print("Login without user.")
+def getDatabaseFromEnv():
+    logging.info("DB: Connect to DB: %s/%s" % (','.join(DB_HOST), DB_NAME))
+    if DB_REPLSET:
+        logging.info("DB: Replica Set: %s" % DB_REPLSET)
+    if DB_USER:
+        logging.info("DB: Login with user: %s" % DB_USER)
+    else:
+        logging.info("DB: Login without user.")
     if not DB_REPLSET and len(DB_HOST) > 1:
-        print('Missing Replica set.')
-        return None
+        logging.error('DB: Missing Replica set.')
+        raise Exception('DB: Missing Replica set.')
 
     mongo_client = MongoClient(
         host=DB_HOST,
@@ -33,10 +33,9 @@ def getDatabaseFromEnv(is_log_mode=False):
         serverSelectionTimeoutMS=DB_TIMEOUT)
     database = mongo_client[DB_NAME]
 
-    if DB_USER != '':
-        if not database.authenticate(DB_USER, DB_PWD):
-            print('Database auth failed.')
-            return None
+    if DB_USER != '' and not database.authenticate(DB_USER, DB_PWD):
+        logging.error('DB: Database auth failed.')
+        raise Exception('DB: Database auth failed.')
     return database
 
 
