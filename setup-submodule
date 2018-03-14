@@ -13,13 +13,17 @@ installHooks() {
             mv $HOOK_DIR/$hook $HOOK_DIR/$hook.local
         fi
         # create the symlink, overwriting the file if it exists
-        ln -s -f $SOURCE_DIR/$hook $HOOK_DIR/$hook
+        ln -s -f ../../$SOURCE_DIR/$hook $HOOK_DIR/$hook
     done
 }
 
 
 installTool() {
-    ln -s -f `dirname $0`/tool ./tool
+    if ! [ -e ./tool ]; then
+        ln -s -f `dirname $0`/tool ./tool
+    else
+        echo "./tool folder already exist."
+    fi
 }
 
 

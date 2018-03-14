@@ -15,7 +15,7 @@ class Router():
 
     def enrollHandler(self, path):
         def decorator(handler):
-            self.addHandler(path, handler)
+            self.mountHandler(path, handler)
             return handler
 
         return decorator

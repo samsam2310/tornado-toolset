@@ -1,4 +1,7 @@
 #!/bin/sh
+# Use `tool/start-service` to start the server,
+# or `tool/start-service --dev` to start the server and
+# auto restart when the code is updated.
 
 cd `dirname $0`'/..'
 
@@ -9,17 +12,33 @@ server_cmd="python -m backend.app"
 
 killSubproc() {
 	test $server_pid -ne 0 && kill -TERM $server_pid
-	kill -INT $webpack_pid
+	test $webpack_pid -ne 0 && kill -INT $webpack_pid
 	exit 1
 }
 
-# $1 = cmd, $2 = cur_pid
-runServer() {
+runPythonServerBackground() {
 	$server_cmd &
 	server_pid=$!
 	sleep 1.5
 	if [ -z "`ps $server_pid | sed 1d`" ]; then
 		server_pid=0;
+	fi
+}
+
+# $1 = 0/1 => deploy/dev
+runWebpack() {
+	if ! [ -e webpack.config.js ]; then
+		echo ""
+		echo "webpack.config.js not exist, skipping webpack..."
+		echo ""	
+		webpack_pid=0
+		return 0
+	fi
+	if [ $1 -eq 0 ]; then
+		$webpack_cmd
+	else
+		$webpack_cmd --progress --colors --watch &
+		webpack_pid=$!
 	fi
 }
 
@@ -34,18 +53,22 @@ monitorModify() {
 		echo "-------------- reload ${server_pid} --------------"
 		echo ""
 		test $server_pid -ne 0  && kill -TERM $server_pid
-		runServer
+		runPythonServerBackground
 		old_MD5=`echoMD5`
 	fi
 }
 
 if [ "$1" == "--dev" ]; then
 	DEBUG_MODE=True
+
+	# To clean up subproces when user press ctrl+c
 	trap 'killSubproc' INT
+	# TODO: We don't know why add this line, add comments
 	trap 'server_pid=0' USR1
-	$webpack_cmd --progress --colors --watch &
-	webpack_pid=$!
-	runServer
+
+	runWebpack 1
+	runPythonServerBackground
+
 	old_MD5=`echoMD5`
 	while [ 1 ]; do
 		sleep 1
@@ -53,6 +76,8 @@ if [ "$1" == "--dev" ]; then
 	done
 else
 	DEBUG_MODE=False
-	$webpack_cmd
+	runWebpack 0
+
+	# Script block at this line
 	$server_cmd
 fi
