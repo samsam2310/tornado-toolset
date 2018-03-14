@@ -10,7 +10,7 @@ DB_HOST = os.environ.get('DB_HOST', 'localhost:27017').split(",")
 DB_REPLSET = os.environ.get('DB_REPLSET', None)
 DB_USER = os.environ.get('DB_USER', '')
 DB_PWD = os.environ.get('DB_PWD', '')
-DB_NAME = os.environ.get('DB_NAME', 'mealtime')
+DB_NAME = os.environ.get('DB_NAME', 'TestDB')
 # The time out of MongoClient, in seconds.
 DB_TIMEOUT = 2
 
@@ -51,8 +51,9 @@ class Field():
 class Collection():
     _ORM_field_names = None
     _ORM_database_instance = getDatabaseFromEnv(True)
-    # Need to be overwritten by subclass
-    _ORM_collection = 'default'
+
+    # Note: Overwrite this var to spesify the collection name.
+    _ORM_collection_name = 'default'
 
     @classmethod
     def _getFieldNames(cls):
@@ -65,13 +66,13 @@ class Collection():
 
     @classmethod
     def _checkInstance(cls, val):
-        if not isinstance(orm_object, cls):
+        if not isinstance(val, cls):
             raise ValueError(
                 'orm_object must be a isinstance of %s' % cls.__name__)
 
     @classmethod
     def getCollection(cls):
-        return cls._ORM_database_instance[cls._ORM_collection]
+        return cls._ORM_database_instance[cls._ORM_collection_name]
 
     @classmethod
     def upsert(cls, orm_object, query):
@@ -85,7 +86,7 @@ class Collection():
     @classmethod
     def update(cls, orm_object, query):
         cls._checkInstance(orm_object)
-        data, _ = orm_object._getUpsertData()
+        set_data, _ = orm_object._getUpsertData()
         cls.getCollection().update_one(query, {"$set": set_data})
 
     @classmethod
@@ -106,14 +107,24 @@ class Collection():
             cls.getCollection().find_one(kargs))
 
     @classmethod
-    def findMany(cls, skip=0, limit=0, sort=None, **kargs):
-        for result in cls.getCollection().find(kargs):
+    def _getCursor(cls, query, skip=0, limit=0, sort=None):
+        cursor = cls.getCollection().find(
+            query, skip=skip, limit=limit, sort=sort)
+        return cursor
+
+    @classmethod
+    def findMany(cls, *args, **kargs):
+        for result in cls._getCursor(*args, **kargs):
             yield cls._createFromPymongoResult(result)
+
+    @classmethod
+    def count(cls, *args, **kargs):
+        return cls._getCursor(*args, **kargs).count()
 
     @classmethod
     def getById(cls, object_id):
         if not isinstance(object_id, ObjectId):
-            if not ObjectId.is_valid(key):
+            if not ObjectId.is_valid(object_id):
                 return None
             object_id = ObjectId(object_id)
         return cls.findOne(_id=object_id)

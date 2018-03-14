@@ -16,8 +16,12 @@ killSubproc() {
 	exit 1
 }
 
+runPythonServerWithEnvFile() {
+	env `cat .env | grep -v ^# | xargs` $server_cmd
+}
+
 runPythonServerBackground() {
-	$server_cmd &
+	runPythonServerWithEnvFile &
 	server_pid=$!
 	sleep 1.5
 	if [ -z "`ps $server_pid | sed 1d`" ]; then
@@ -59,8 +63,6 @@ monitorModify() {
 }
 
 if [ "$1" == "--dev" ]; then
-	DEBUG_MODE=True
-
 	# To clean up subproces when user press ctrl+c
 	trap 'killSubproc' INT
 	# TODO: We don't know why add this line, add comments
@@ -75,9 +77,8 @@ if [ "$1" == "--dev" ]; then
 		monitorModify
 	done
 else
-	DEBUG_MODE=False
 	runWebpack 0
 
 	# Script block at this line
-	$server_cmd
+	runPythonServerWithEnvFile
 fi
