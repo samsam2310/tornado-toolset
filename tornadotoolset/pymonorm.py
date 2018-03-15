@@ -102,14 +102,13 @@ class Collection():
         return orm_object
 
     @classmethod
-    def findOne(cls, **kargs):
+    def findOne(cls, *args, **kargs):
         return cls._createFromPymongoResult(
-            cls.getCollection().find_one(kargs))
+            cls.getCollection().find_one(*args, **kargs))
 
     @classmethod
-    def _getCursor(cls, query, skip=0, limit=0, sort=None):
-        cursor = cls.getCollection().find(
-            query, skip=skip, limit=limit, sort=sort)
+    def _getCursor(cls, *args, **kargs):
+        cursor = cls.getCollection().find(*args, **kargs)
         return cursor
 
     @classmethod
