@@ -50,7 +50,7 @@ class Field():
 
 class Collection():
     _ORM_field_names = None
-    _ORM_database_instance = getDatabaseFromEnv(True)
+    _ORM_database_instance = getDatabaseFromEnv()
 
     # Note: Overwrite this var to spesify the collection name.
     _ORM_collection_name = 'default'
