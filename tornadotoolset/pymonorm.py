@@ -126,7 +126,7 @@ class Collection():
             if not ObjectId.is_valid(object_id):
                 return None
             object_id = ObjectId(object_id)
-        return cls.findOne(_id=object_id)
+        return cls.findOne({'_id': object_id})
 
     def __init__(self, *args, **kargs):
         self._local_data = None
