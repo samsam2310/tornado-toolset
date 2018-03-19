@@ -1,4 +1,21 @@
-# Pymongo ORM Base
+# -*- coding: utf-8 -*-
+""" Pymongo ORM Base
+Example:
+
+User(Collection):
+    # Collection name in mongodb
+    _ORM_collection_name = 'user'
+
+    name = Field()
+    age = Field(18)
+    created = Field(datetime.utcnow)
+
+user = User(name='Bob') # Create a user with default age 18.
+user.save() # Save to mongodbs
+
+user = User.find_one('Bob')
+user.delete() # Delete bob
+"""
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
@@ -15,7 +32,7 @@ DB_NAME = os.environ.get('DB_NAME', 'TestDB')
 DB_TIMEOUT = 2
 
 
-def getDatabaseFromEnv():
+def get_database_from_env():
     logging.info("DB: Connect to DB: %s/%s" % (','.join(DB_HOST), DB_NAME))
     if DB_REPLSET:
         logging.info("DB: Replica Set: %s" % DB_REPLSET)
@@ -43,20 +60,20 @@ class Field():
     def __init__(self, default=None):
         self._default = default
 
-    def getDefault(self):
+    def get_default(self):
         default = self._default
         return default() if callable(default) else default
 
 
 class Collection():
     _ORM_field_names = None
-    _ORM_database_instance = getDatabaseFromEnv()
+    _ORM_database_instance = get_database_from_env()
 
     # Note: Overwrite this var to spesify the collection name.
     _ORM_collection_name = 'default'
 
     @classmethod
-    def _getFieldNames(cls):
+    def _get_field_names(cls):
         if not cls._ORM_field_names:
             cls._ORM_field_names = [
                 attr for attr in cls.__dict__
@@ -65,93 +82,95 @@ class Collection():
         return cls._ORM_field_names
 
     @classmethod
-    def _checkInstance(cls, val):
+    def _check_instance(cls, val):
         if not isinstance(val, cls):
             raise ValueError(
                 'orm_object must be a isinstance of %s' % cls.__name__)
 
     @classmethod
-    def getCollection(cls):
+    def get_collection(cls):
         return cls._ORM_database_instance[cls._ORM_collection_name]
 
     @classmethod
     def upsert(cls, orm_object, query):
-        cls._checkInstance(orm_object)
-        set_data, default_data = orm_object._getUpsertData()
-        cls.getCollection().update_one(
-            query, {"$set": set_data,
-                    "$setOnInsert": default_data},
+        cls._check_instance(orm_object)
+        set_data, default_data = orm_object._get_upsert_data()
+        cls.get_collection().update_one(
+            query, {
+                "$set": set_data,
+                "$setOnInsert": default_data
+            },
             upsert=True)
 
     @classmethod
     def update(cls, orm_object, query):
-        cls._checkInstance(orm_object)
-        set_data, _ = orm_object._getUpsertData()
-        cls.getCollection().update_one(query, {"$set": set_data})
+        cls._check_instance(orm_object)
+        set_data, _ = orm_object._get_upsert_data()
+        cls.get_collection().update_one(query, {"$set": set_data})
 
     @classmethod
-    def _createFromPymongoResult(cls, result):
+    def _create_from_pymongo_result(cls, result):
         if not result:
             return None
 
         data = {'_id': result['_id']}
-        for attr in cls._getFieldNames():
+        for attr in cls._get_field_names():
             data[attr] = result.get(attr, None)
         orm_object = cls(**data)
-        orm_object._syncServerData()
+        orm_object._sync_server_data()
         return orm_object
 
     @classmethod
-    def findOne(cls, *args, **kargs):
-        return cls._createFromPymongoResult(
-            cls.getCollection().find_one(*args, **kargs))
+    def find_one(cls, *args, **kargs):
+        return cls._create_from_pymongo_result(cls.get_collection().find_one(
+            *args, **kargs))
 
     @classmethod
-    def _getCursor(cls, *args, **kargs):
-        cursor = cls.getCollection().find(*args, **kargs)
+    def _get_cursor(cls, *args, **kargs):
+        cursor = cls.get_collection().find(*args, **kargs)
         return cursor
 
     @classmethod
-    def findMany(cls, *args, **kargs):
-        for result in cls._getCursor(*args, **kargs):
-            yield cls._createFromPymongoResult(result)
+    def find_many(cls, *args, **kargs):
+        for result in cls._get_cursor(*args, **kargs):
+            yield cls._create_from_pymongo_result(result)
 
     @classmethod
     def count(cls, *args, **kargs):
-        return cls._getCursor(*args, **kargs).count()
+        return cls._get_cursor(*args, **kargs).count()
 
     @classmethod
-    def getById(cls, object_id):
+    def from_id(cls, object_id):
         if not isinstance(object_id, ObjectId):
             if not ObjectId.is_valid(object_id):
                 return None
             object_id = ObjectId(object_id)
-        return cls.findOne({'_id': object_id})
+        return cls.find_one({'_id': object_id})
 
     def __init__(self, *args, **kargs):
         self._local_data = None
         self._default_field = None
         self._server_data = {}
-        self._initLocalData(kargs)
+        self._init_local_data(kargs)
 
-    def _initLocalData(self, kargs):
+    def _init_local_data(self, kargs):
         data = {'_id': kargs.get('_id', None)}
         default_field = []
-        for attr in self._getFieldNames():
+        for attr in self._get_field_names():
             if attr in kargs:
                 data[attr] = kargs[attr]
             else:
                 default_field.append(attr)
                 field = getattr(self.__class__, attr)
-                data[attr] = field.getDefault()
+                data[attr] = field.get_default()
 
         self._local_data = data
         self._default_field = default_field
 
-    def _syncServerData(self):
+    def _sync_server_data(self):
         self._server_data = dict(self._local_data)
 
-    def _getUpdateData(self):
+    def _get_update_data(self):
         res_data = dict()
         for attr in self._local_data:
             if (attr not in self._server_data
@@ -161,7 +180,7 @@ class Collection():
 
         return res_data
 
-    def _getUpsertData(self):
+    def _get_upsert_data(self):
         set_data = {}
         default_data = {}
         local_data = self._local_data
@@ -177,7 +196,7 @@ class Collection():
         return self._local_data[key]
 
     def __setitem__(self, key, val):
-        if key not in self._getFieldNames():
+        if key not in self._get_field_names():
             raise KeyError('%s is not an attribute of %s.' %
                            (key, self.__class__.__name__))
 
@@ -185,25 +204,25 @@ class Collection():
         if key in self._default_field:
             self._default_field.remove(key)
 
-    def _checkId(self):
+    def _check_id(self):
         if not self._local_data.get('_id', None):
             raise RuntimeError('Missing _id field.')
 
     def save(self):
-        update_data = self._getUpdateData()
+        update_data = self._get_update_data()
         if not update_data:
             return
         if self._local_data.get('_id', None):
-            self.getCollection().update_one({
+            self.get_collection().update_one({
                 '_id': self._local_data['_id'],
             }, {'$set': update_data})
         else:
-            insert_res = self.getCollection().insert_one(update_data)
+            insert_res = self.get_collection().insert_one(update_data)
             self._local_data['_id'] = insert_res.inserted_id
-        self._syncServerData()
+        self._sync_server_data()
 
     def delete(self):
-        self._checkId()
-        self.getCollection().delete_one({'_id': self._local_data['_id']})
+        self._check_id()
+        self.get_collection().delete_one({'_id': self._local_data['_id']})
         self._local_data['_id'] = None
         self._server_data = {}
