@@ -23,6 +23,18 @@ class TestUser(Collection):
     created = Field(default=get_date_time)
 
 
+class TestFoo(Collection):
+    foo = Field()
+
+    # This won't appear because `name` already in TestUser, and base on python
+    # MRO, `name` in TestUser should be used instead of this one.
+    name = Field()
+
+
+class TestInherit(TestUser, TestFoo):
+    _ORM_collection_name = 'TestInherit'
+
+
 class MongoOrmTest(unittest.TestCase):
     def setUp(self):
         self._db = get_database_from_env()
@@ -51,6 +63,10 @@ class MongoOrmTest(unittest.TestCase):
 
     def test_class_field(self):
         self.assertCountEqual(TestUser._get_field_names(), self._fields)
+
+    def test_inherit_class_field(self):
+        self.assertCountEqual(TestInherit._get_field_names(),
+                              self._fields + ['foo'])
 
     def test_save(self):
         test_user = self._test_user

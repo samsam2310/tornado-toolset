@@ -74,11 +74,14 @@ class Collection():
 
     @classmethod
     def _get_field_names(cls):
-        if not cls._ORM_field_names:
-            cls._ORM_field_names = [
-                attr for attr in cls.__dict__
-                if isinstance(getattr(cls, attr), Field)
-            ]
+        if not cls.__dict__.get('_ORM_field_names', None):
+            cls._ORM_field_names = []
+            for super_class in cls.mro():
+                for attr in super_class.__dict__:
+                    if attr in cls._ORM_field_names:
+                        continue
+                    if isinstance(super_class.__dict__[attr], Field):
+                        cls._ORM_field_names.append(attr)
         return cls._ORM_field_names
 
     @classmethod

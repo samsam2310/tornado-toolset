@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tornado-toolset',
-    version='0.1.0',
+    version='0.1.1',
     author='Sam Wu',
     author_email='samsam2310@gmail.com',
     packages=find_packages(),
