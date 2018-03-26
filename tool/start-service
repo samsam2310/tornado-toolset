@@ -39,9 +39,9 @@ runWebpack() {
 		return 0
 	fi
 	if [ $1 -eq 0 ]; then
-		$webpack_cmd
+		$webpack_cmd --mode production
 	else
-		$webpack_cmd --progress --colors --watch &
+		$webpack_cmd --mode development --progress --colors --watch &
 		webpack_pid=$!
 	fi
 }
