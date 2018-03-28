@@ -4,7 +4,7 @@
 # auto restart when the code is updated.
 
 cd `dirname $0`'/..'
-
+source tool/load-env
 current_pid=$$
 
 webpack_cmd="./node_modules/.bin/webpack"
@@ -16,12 +16,8 @@ killSubproc() {
 	exit 1
 }
 
-runPythonServerWithEnvFile() {
-	env `cat .env | grep -v ^# | xargs` $server_cmd &
-}
-
 runPythonServerBackground() {
-	runPythonServerWithEnvFile
+	$server_cmd &
 	server_pid=$!
 	sleep 1.5
 	if [ -z "`ps $server_pid | sed 1d`" ]; then
@@ -74,6 +70,7 @@ if [ "$1" == "--dev" ]; then
 	trap 'server_pid=0' USR1
 
 	runWebpack 1
+
 	runPythonServerBackground
 
 	old_MD5=`echoMD5`
@@ -85,5 +82,5 @@ else
 	runWebpack 0
 
 	# Script block at this line
-	runPythonServerWithEnvFile
+	$server_cmd
 fi

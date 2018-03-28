@@ -1,0 +1,13 @@
+#!/bin/env sh
+# Write command to file so it can parse .env correctly when it contain space.
+#
+# Usage:
+#   source tool/load-env
+
+tmp=`mktemp`
+cat .env | grep -v ^# |sed '/^\s*$/d' | awk '{print "export "$0}' > $tmp
+echo "---- load env ----"
+cat $tmp
+echo "---- end env ----"
+source $tmp
+rm $tmp
