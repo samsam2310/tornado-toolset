@@ -17,20 +17,19 @@ class Router():
     def __init__(self):
         self._routes = []
 
-    def mount_handler(self, path, handler):
-        self._routes.append((path, handler))
+    def mount_handler(self, path, handler, data=None):
+        self._routes.append((path, handler, data) if data else (path, handler))
 
     def get_routes(self):
         return self._routes
 
     def mount_router(self, base_path, router):
         for route in router.get_routes():
-            new_route = (base_path + route[0], route[1])
-            self._routes.append(new_route)
+            self.mount_handler(base_path + route[0], *route[1:])
 
-    def enroll_handler(self, path):
+    def enroll_handler(self, path, data=None):
         def decorator(handler):
-            self.mount_handler(path, handler)
+            self.mount_handler(path, handler, data)
             return handler
 
         return decorator
