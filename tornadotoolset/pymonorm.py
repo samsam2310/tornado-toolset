@@ -28,8 +28,8 @@ DB_REPLSET = os.environ.get('DB_REPLSET', None)
 DB_USER = os.environ.get('DB_USER', '')
 DB_PWD = os.environ.get('DB_PWD', '')
 DB_NAME = os.environ.get('DB_NAME', 'TestDB')
-# The time out of MongoClient, in seconds.
-DB_TIMEOUT = 2
+# The time out of MongoClient, in milliseconds.
+DB_TIMEOUT = 2000
 
 
 def get_database_from_env():
