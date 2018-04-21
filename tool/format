@@ -4,6 +4,50 @@
 # |tool/format remote| to format with other remote.
 # |tool/format remote --check| to check if the code need format.
 
+
+logMessage() {
+	if [ "$is_check_mode" == "" ]; then
+		echo "$1"
+	fi
+}
+
+checkCmd() {
+	"$1" -v > /dev/null
+	if [ $? -ne 0 ]; then
+		logMessage "Please run tool/install-dependency."
+		exit 1
+	fi
+}
+
+formatJSFiles() {
+	local changed_files=`git diff ${remote_branch} --name-only`
+	local js_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.jsx?$`
+	if [ $? -eq 0 ]; then
+		local js_files=`echo "$js_files" | tr '\n' ' '`
+		logMessage 'Formatting '$js_files
+		$prettier_cmd $prettier_arg $js_files > /dev/null
+		local prettier_res="$?"
+		if [ "$is_check_mode" != "" ] && [ "$prettier_res" -ne 0 ]; then
+			exit 1
+		fi
+	fi
+}
+
+formatPythonFiles() {
+	local changed_files=`git diff ${remote_branch} --name-only`
+	local python_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.py$`
+	if [ $? -eq 0 ]; then
+		local python_files=`echo "$python_files" | tr '\n' ' '`
+		logMessage 'Formatting '$python_files
+		$yapf_cmd $python_files $yapf_arg > /dev/null
+		local yapf_res="$?"
+		if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
+			exit 1
+		fi
+	fi
+}
+
+
 if [ "$1" = "" ]; then
 	remote='origin'
 else
@@ -15,26 +59,7 @@ if [ "$2" = "--check" ]; then
 	is_check_mode="yes"
 fi
 
-function logMessage {
-	if [ "$is_check_mode" == "" ]; then
-		echo "$1"
-	fi
-}
-
 logMessage "Format file diff with ${remote_branch}"
-
-function checkCmd {
-	"$1" -v > /dev/null
-	if [ $? -ne 0 ]; then
-		logMessage "Please run tool/install-dependency."
-		exit 1
-	fi
-}
-
-prettier_cmd='./node_modules/.bin/prettier'
-checkCmd $prettier_cmd
-yapf_cmd='yapf'
-checkCmd $yapf_cmd
 
 if [ "$is_check_mode" != "" ]; then
 	prettier_arg=' -l'
@@ -44,25 +69,14 @@ else
 	yapf_arg=' -i'
 fi
 
-changed_files=`git diff ${remote_branch} --name-only`
-js_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.jsx?$`
-if [ $? -eq 0 ]; then
-	js_files=`echo "$js_files" | tr '\n' ' '`
-	$prettier_cmd $prettier_arg $js_files > /dev/null
-	prettier_res="$?"
-	if [ "$is_check_mode" != "" ] && [ "$prettier_res" -ne 0 ]; then
-		exit 1
-	fi
+prettier_cmd='./node_modules/.bin/prettier'
+if [ -e package.json ]; then
+	checkCmd $prettier_cmd || exit 1
+	formatJSFiles || exit 1
+else
+	logMessage 'Skipping JS formating...'
 fi
 
-python_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.py$`
-if [ $? -eq 0 ]; then
-	python_files=`echo "$python_files" | tr '\n' ' '`
-	$yapf_cmd $python_files $yapf_arg > /dev/null
-	yapf_res="$?"
-	if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
-		exit 1
-	fi
-fi
-
-exit 0
+yapf_cmd='yapf'
+checkCmd $yapf_cmd || exit 1
+formatPythonFiles || exit 1

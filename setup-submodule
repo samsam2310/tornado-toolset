@@ -2,9 +2,10 @@
 
 # Install git hooks
 installHooks() {
-    SOURCE_DIR=`dirname $0`/githooks
-    HOOKS=`ls ${SOURCE_DIR}`
-    HOOK_DIR=`git rev-parse --show-toplevel`/.git/hooks
+    echo "---- Installing githooks ----"
+    local SOURCE_DIR=`dirname $0`/githooks
+    local HOOKS=`ls ${SOURCE_DIR}`
+    local HOOK_DIR=`git rev-parse --show-toplevel`/.git/hooks
 
     for hook in $HOOKS; do
         # If the hook already exists, is executable, and is not a symlink
@@ -15,39 +16,86 @@ installHooks() {
         # create the symlink, overwriting the file if it exists
         ln -s -f ../../$SOURCE_DIR/$hook $HOOK_DIR/$hook
     done
+    echo "---- Installed githooks ----"
 }
 
 
 installTool() {
+    echo "---- Installing tools ----"
     if ! [ -e ./tool ]; then
         ln -s -f `dirname $0`/tool ./tool
     else
         echo "./tool folder already exist."
     fi
+    echo "---- Installed tools ----"
 }
 
+copyDefaultFile() {
+    local SOURCE_DIR=`dirname $0`/default
+    local SOURCE_FILE="${SOURCE_DIR}/$1"
+    if [ -n "$2" ]; then
+        SOURCE_FILE="${SOURCE_DIR}/$2"
+    fi
+    if [ -f "$1" ]; then
+        echo "$1" already exist.
+    else
+        cp "${SOURCE_FILE}" "$1"
+    fi
+}
 
-installFolder() {
-    mkdir -p frontend
+installBackend() {
+    echo "---- Installing backend ----"
     mkdir -p backend
     mkdir -p backend/db
+    touch backend/db/__init__.py
     mkdir -p backend/handler
+    touch backend/handler/__init__.py
     mkdir -p backend/template
     mkdir -p backend/test
-    touch backend/db/__init__.py
-    touch backend/handler/__init__.py
-    touch requirement.txt
-    touch dev-requirement.txt
+    touch backend/test/__init__.py
+
+    copyDefaultFile 'backend/app.py'
+    copyDefaultFile 'backend/handler/route.py'
+    copyDefaultFile 'backend/test/__main__.py'
+    copyDefaultFile 'requirement.txt'
+    copyDefaultFile 'dev-requirement.txt'
+    copyDefaultFile '.gitignore' 'fullend-gitignore'
+    copyDefaultFile '.env.example'
+    copyDefaultFile '.style.yapf'
+    echo "---- Installed backend ----"
+}
+
+installFrontend() {
+    echo "---- Installing frontend ----"
+    mkdir -p frontend
+    mkdir -p frontend/components
+    mkdir -p frontend/routes
+    mkdir -p frontend/store
+    mkdir -p frontend/utils
+    mkdir -p public/bundle
+
+    copyDefaultFile 'frontend/main.jsx'
+    copyDefaultFile 'frontend/utils/ajax.jsx'
+    copyDefaultFile 'package.json'
+    copyDefaultFile 'webpack.config.js'
+    copyDefaultFile '.prettierrc'
+    copyDefaultFile 'public/bundle/.gitignore' 'ignoreall-gitignore'
+    echo "---- Installed frontend ----"
 }
 
 
 read -p "Setup tornado project at $(pwd) ?[y/N]" yn
-if [ $yn == 'y' ] || [ $yn == 'Y' ]; then
-    installHooks || exit 1
-    installTool || exit 1
-    installFolder || exit 1
-    echo "success."
-else
+if [ $yn != 'y' ] && [ $yn != 'Y' ]; then
     echo "quit."
     exit 1
 fi
+
+installHooks || exit 1
+installTool || exit 1
+installBackend || exit 1
+
+read -p "Setup frontend ?[y/N]" yn
+if [ $yn == 'y' ] || [ $yn == 'Y' ]; then
+    installFrontend || exit 1
+fi
+echo "success."
