@@ -52,11 +52,15 @@ installBackend() {
     touch backend/handler/__init__.py
     mkdir -p backend/template
     mkdir -p backend/test
+    mkdir -p backend/test/db
+    mkdir -p backend/test/handler
     touch backend/test/__init__.py
 
     copyDefaultFile 'backend/app.py'
     copyDefaultFile 'backend/handler/route.py'
     copyDefaultFile 'backend/test/__main__.py'
+    copyDefaultFile 'backend/test/db/base.py'
+    copyDefaultFile 'backend/test/handler/base.py'
     copyDefaultFile 'requirement.txt'
     copyDefaultFile 'dev-requirement.txt'
     copyDefaultFile '.gitignore' 'fullend-gitignore'
@@ -85,7 +89,7 @@ installFrontend() {
 
 
 read -p "Setup tornado project at $(pwd) ?[y/N]" yn
-if [ $yn != 'y' ] && [ $yn != 'Y' ]; then
+if [ "$yn" != 'y' ] && [ "$yn" != 'Y' ]; then
     echo "quit."
     exit 1
 fi
@@ -95,7 +99,9 @@ installTool || exit 1
 installBackend || exit 1
 
 read -p "Setup frontend ?[y/N]" yn
-if [ $yn == 'y' ] || [ $yn == 'Y' ]; then
+if [ "$yn" == 'y' ] || [ "$yn" == 'Y' ]; then
     installFrontend || exit 1
+else
+    echo "Skipping frontend..."
 fi
 echo "success."
