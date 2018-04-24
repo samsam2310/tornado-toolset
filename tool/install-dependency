@@ -7,11 +7,11 @@ if [ "$1" == '--dev' ]; then
 	echo "---- Install develop dependency ----"
 	pip3 install -r dev-requirement.txt
 	pip3 install -r requirement.txt
-	npm install
+	[ -e package.json ] && npm install
 else
 	echo "---- Install deploy dependency ----"
 	pip3 install -r requirement.txt
-	npm install
+	[ -e package.json ] && npm install
 fi
 
 echo "---- Done ----"
