@@ -52,9 +52,11 @@ installBackend() {
     touch backend/handler/__init__.py
     mkdir -p backend/template
     mkdir -p backend/test
-    mkdir -p backend/test/db
-    mkdir -p backend/test/handler
     touch backend/test/__init__.py
+    mkdir -p backend/test/db
+    touch backend/test/db/__init__.py
+    mkdir -p backend/test/handler
+    touch backend/test/handler/__init__.py
 
     copyDefaultFile 'backend/app.py'
     copyDefaultFile 'backend/handler/route.py'
