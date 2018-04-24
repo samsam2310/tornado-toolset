@@ -70,6 +70,8 @@ class Field():
     def create_index(self, mongo_collection, field_name):
         # If index already exist then this has no effect
         if self._is_unique:
+            logging.info('Create unique index: %s: %s' % (mongo_collection.name,
+                                                          field_name))
             mongo_collection.create_index(field_name, unique=True)
 
 
