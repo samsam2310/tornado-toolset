@@ -6,6 +6,7 @@ User(Collection):
     # Collection name in mongodb
     _ORM_collection_name = 'user'
 
+    uid = Field(time.time, is_unique=True)
     name = Field()
     age = Field(18)
     created = Field(datetime.utcnow)
@@ -57,16 +58,22 @@ def get_database_from_env():
 
 
 class Field():
-    def __init__(self, default=None):
+
+    def __init__(self, default=None, is_unique=False):
         self._default = default
+        self._is_unique = is_unique
 
     def get_default(self):
         default = self._default
         return default() if callable(default) else default
 
+    def create_index(self, mongo_collection, field_name):
+        # If index already exist then this has no effect
+        if self._is_unique:
+            mongo_collection.create_index(field_name, unique=True)
+
 
 class Collection():
-    _ORM_field_names = None
     _ORM_database_instance = get_database_from_env()
 
     # Note: Overwrite this var to spesify the collection name.
@@ -79,8 +86,11 @@ class Collection():
             for super_class in cls.mro():
                 for attr in super_class.__dict__:
                     if attr in cls._ORM_field_names:
+                        # Skip repeated field
                         continue
-                    if isinstance(super_class.__dict__[attr], Field):
+                    field = super_class.__dict__[attr]
+                    if isinstance(field, Field):
+                        field.create_index(cls.get_collection(), attr)
                         cls._ORM_field_names.append(attr)
         return cls._ORM_field_names
 
@@ -176,8 +186,8 @@ class Collection():
     def _get_update_data(self):
         res_data = dict()
         for attr in self._local_data:
-            if (attr not in self._server_data
-                    or self._local_data[attr] != self._server_data[attr]):
+            if (attr not in self._server_data or
+                    self._local_data[attr] != self._server_data[attr]):
                 res_data[attr] = self._local_data[attr]
         res_data.pop('_id', None)
 

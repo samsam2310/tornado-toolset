@@ -5,6 +5,7 @@
 from datetime import datetime
 
 import pymongo
+import time
 import unittest
 
 from tornadotoolset.pymonorm import Collection, Field, get_database_from_env
@@ -17,6 +18,7 @@ def get_date_time():
 class TestUser(Collection):
     _ORM_collection_name = 'TestUser'
 
+    uid = Field(time.time, is_unique=True)
     name = Field()
     age = Field(default=18)
     birthday = Field(default=datetime(1997, 1, 12))
@@ -36,13 +38,19 @@ class TestInherit(TestUser, TestFoo):
 
 
 class MongoOrmTest(unittest.TestCase):
+
     def setUp(self):
         self._db = get_database_from_env()
         self._db.drop_collection(TestUser._ORM_collection_name)
         self._collection = self._db[TestUser._ORM_collection_name]
-        self._fields = ['name', 'age', 'birthday', 'created']
+        self._fields = ['uid', 'name', 'age', 'birthday', 'created']
         self._test_user = TestUser(
             name='Bob', age=20, birthday=datetime(1997, 11, 2))
+
+        if '_ORM_field_names' in TestUser.__dict__:
+            del TestUser._ORM_field_names
+        if '_ORM_field_names' in TestFoo.__dict__:
+            del TestFoo._ORM_field_names
 
     def get_default_data(self, **kargs):
         data = {
@@ -67,6 +75,19 @@ class MongoOrmTest(unittest.TestCase):
     def test_inherit_class_field(self):
         self.assertCountEqual(TestInherit._get_field_names(),
                               self._fields + ['foo'])
+
+    def test_unique(self):
+        # Create a instense to make TestUser call _get_field_names()
+        _ = TestUser()
+        index_fields = [
+            idx['key'].keys()[0] for idx in self._collection.list_indexes()
+        ]
+        self.assertIn('uid', index_fields)
+
+        alice = TestUser(uid=1, name='Alice')
+        alice.save()
+        bob = TestUser(uid=1, name='Bob')
+        self.assertRaises(pymongo.errors.DuplicateKeyError, bob.save)
 
     def test_save(self):
         test_user = self._test_user
@@ -106,14 +127,12 @@ class MongoOrmTest(unittest.TestCase):
         self.assertEqual(TestUser.count(query), 2)
         self.assertEqual(
             len([x for x in TestUser.find_many(query, limit=1)]), 1)
-        self.assertEqual(
-            len([x for x in TestUser.find_many(query, skip=2)]), 0)
+        self.assertEqual(len([x for x in TestUser.find_many(query, skip=2)]), 0)
         self.assertEqual(
             next(TestUser.find_many(query, sort=[('name', 1)]))['name'],
             'Alice')
         self.assertEqual(
-            next(TestUser.find_many(query, sort=[('name', -1)]))['name'],
-            'Bob')
+            next(TestUser.find_many(query, sort=[('name', -1)]))['name'], 'Bob')
         for found_user in TestUser.find_many(query):
             self.assertEqual(found_user['age'], bob['age'])
 
@@ -124,33 +143,42 @@ class MongoOrmTest(unittest.TestCase):
         self.assert_mongo_data_equal(TestUser.from_id(str(bob['_id'])), bob)
 
     def test_upsert(self):
+        # Upsert name of user whose name is Bob to Alice
         alice = TestUser(name='Alice')
-        TestUser.upsert(alice, {'name': 'Bob'})
-        test_query = TestUser.find_one({'name': 'Alice'})
-        self.assertIsNotNone(test_query)
-        self.assert_mongo_data_equal(test_query,
-                                     self.get_default_data(
-                                         _id=test_query['_id'], name='Alice'))
-        TestUser.find_one({'name': 'Alice'}).delete()
-
-        bob = self._test_user
-        bob.save()
-        alice = TestUser(name='Alice')
-        alice['age'] = 18
-        alice['created'] = datetime(2017, 1, 7)
         TestUser.upsert(alice, {'name': 'Bob'})
         test_query = TestUser.find_one({'name': 'Alice'})
         self.assertIsNotNone(test_query)
         self.assert_mongo_data_equal(
             test_query, {
                 '_id': test_query['_id'],
-                'name': 'Alice',
+                'uid': test_query['uid'],
+                'name': alice['name'],
                 'age': 18,
+                'birthday': datetime(1997, 1, 12),
+                'created': get_date_time(),
+            })
+        TestUser.find_one({'name': 'Alice'}).delete()
+
+        bob = self._test_user
+        bob.save()
+        alice = TestUser(name='Alice')
+        alice['age'] = 28
+        alice['created'] = datetime(2017, 1, 7)
+        TestUser.upsert(alice, {'name': 'Bob'})
+        test_query = TestUser.find_one({'name': 'Alice'})
+        self.assertIsNotNone(test_query)
+        self.assert_mongo_data_equal(
+            test_query, {
+                '_id': bob['_id'],
+                'uid': bob['uid'],
+                'name': alice['name'],
+                'age': alice['age'],
                 'birthday': bob['birthday'],
                 'created': datetime(2017, 1, 7),
             })
 
     def test_update(self):
+        # Update name of user whose name is Bob to Alice
         alice = TestUser(name='Alice')
         TestUser.update(alice, {'name': 'Bob'})
         self.assertIsNone(TestUser.find_one({'name': 'Alice'}))
@@ -162,7 +190,8 @@ class MongoOrmTest(unittest.TestCase):
         self.assertIsNotNone(test_query)
         self.assert_mongo_data_equal(
             test_query, {
-                '_id': test_query['_id'],
+                '_id': bob['_id'],
+                'uid': bob['uid'],
                 'name': 'Alice',
                 'age': bob['age'],
                 'birthday': bob['birthday'],
