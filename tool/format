@@ -24,7 +24,7 @@ formatJSFiles() {
 	local js_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.jsx?$`
 	if [ $? -eq 0 ]; then
 		local js_files=`echo "$js_files" | tr '\n' ' '`
-		logMessage 'Formatting '$js_files
+		logMessage "Formatting ${js_files}"
 		$prettier_cmd $prettier_arg $js_files > /dev/null
 		local prettier_res="$?"
 		if [ "$is_check_mode" != "" ] && [ "$prettier_res" -ne 0 ]; then
@@ -38,7 +38,7 @@ formatPythonFiles() {
 	local python_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.py$`
 	if [ $? -eq 0 ]; then
 		local python_files=`echo "$python_files" | tr '\n' ' '`
-		logMessage 'Formatting '$python_files
+		logMessage "Formatting ${python_files}"
 		$yapf_cmd $python_files $yapf_arg > /dev/null
 		local yapf_res="$?"
 		if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
