@@ -22,28 +22,32 @@ checkCmd() {
 formatJSFiles() {
 	local changed_files=`git diff ${remote_branch} --name-only`
 	local js_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.jsx?$`
-	if [ $? -eq 0 ]; then
+	if [ "$js_files" != "" ]; then
 		local js_files=`echo "$js_files" | tr '\n' ' '`
-		logMessage "Formatting ${js_files}"
+		logMessage "Formatting JS: ${js_files}"
 		$prettier_cmd $prettier_arg $js_files > /dev/null
 		local prettier_res="$?"
 		if [ "$is_check_mode" != "" ] && [ "$prettier_res" -ne 0 ]; then
 			exit 1
 		fi
+	else
+		logMessage "No JS files need formatted."
 	fi
 }
 
 formatPythonFiles() {
 	local changed_files=`git diff ${remote_branch} --name-only`
 	local python_files=`echo ${changed_files} | tr ' ' '\n' | grep -E *.py$`
-	if [ $? -eq 0 ]; then
+	if [ "$python_files" != "" ]; then
 		local python_files=`echo "$python_files" | tr '\n' ' '`
-		logMessage "Formatting ${python_files}"
-		$yapf_cmd $python_files $yapf_arg > /dev/null
+		logMessage "Formatting Python: ${python_files}"
+		$yapf_cmd "$python_files" "$yapf_arg" > /dev/null
 		local yapf_res="$?"
 		if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
 			exit 1
 		fi
+	else
+		logMessage "No Python files need formatted."
 	fi
 }
 
