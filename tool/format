@@ -41,7 +41,7 @@ formatPythonFiles() {
 	if [ "$python_files" != "" ]; then
 		local python_files=`echo "$python_files" | tr '\n' ' '`
 		logMessage "Formatting Python: ${python_files}"
-		$yapf_cmd "$python_files" "$yapf_arg" > /dev/null
+		$yapf_cmd $yapf_arg $python_files > /dev/null
 		local yapf_res="$?"
 		if [ "$is_check_mode" != "" ] && [ "$yapf_res" -ne 0 ]; then
 			exit 1
