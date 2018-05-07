@@ -112,6 +112,10 @@ class MongoOrmTest(unittest.TestCase):
         test_user.save()
         test_user.delete()
         self.assertIsNone(self._collection.find_one({'name': 'Bob'}))
+        test_user.save()
+        self.assertIsNotNone(self._collection.find_one({'name': 'Bob'}))
+        test_user.delete()
+        self.assertIsNone(self._collection.find_one({'name': 'Bob'}))
 
     def test_find(self):
         self._test_user.save()

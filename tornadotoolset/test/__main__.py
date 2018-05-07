@@ -9,7 +9,7 @@ import os
 import sys
 import unittest
 
-CLEAR_ENVIRONS = []
+CLEAR_ENVIRONS = ['DB_USER', 'DB_PWD', 'DB_REPLSET']
 
 for env in CLEAR_ENVIRONS:
     os.environ[env] = ''
